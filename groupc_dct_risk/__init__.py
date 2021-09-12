@@ -86,9 +86,9 @@ class RiskDataframe():
             MNAR = list(set(MNAR))
             if MNAR == []:
                 if len(input_vars) == 1:
-                    print('Just included one variable. C´mon... include at least two.')
+                    raise ValueError('Just included one variable. C´mon... include at least two.')
                 if len(input_vars) > 1:
-                    print('There is not correlation between the chosen variables.')
+                    raise ValueError('There is not correlation between the chosen variables.')
             else:
                 print('MNAR Variables found: {}'.format(MNAR))
                 features = list(self.data.columns)
@@ -97,7 +97,7 @@ class RiskDataframe():
                 print('Thin File Segment Variables: {}\n'.format(File_Segment))
                 print('Full File Segment Variables: {}\n'.format(features))   
         except:
-            print('Not valid "input_vars" argument, include a list with variables that are inside the dataframe.')
+            raise ValueError('Option1: Not valid "input_vars" argument, include a list with variables that are inside the dataframe or \n Option2: Not missing values inside the input_var')
  
 
  #-----------------------------------------------------------------------------
@@ -180,15 +180,41 @@ class RiskDataframe():
             self.data[new_column] = (self.data[date_1] - self.data[date_2]).dt.days
             self.data.drop(columns = (drop_columns), inplace = True)
         return self.data
+    def anova_2tailed(self):
+        print('Null hypothesis:\n The statistical mean of all the groups/categories of the variables is the same.\nAlternate Hypothesis:\n The statistical mean of all the groups/categories of the variables is not the same.')
+        cols=list(self.data.columns)
+        # cols needs to be renamed to the target list of features that the ANOVA should run, either categorical or numerical etc..
+        for x in cols:
+            model = ols(self.target + '~' + x, self.data).fit() #Oridnary least square method
+            result_anova = sm.stats.anova_lm(model) # ANOVA Test
+            print(result_anova)
+    def stratify_data(self,stratify_column_name, stratify_values, stratify_proportions, random_state=None):
+        """Stratifies data according to the values and proportions passed in
+        Args:
+            data (DataFrame): source data
+            stratify_column_name (str): The name of the single column in the dataframe that holds the data values that will be used to stratify the data
+            stratify_values (list of str): A list of all of the potential values for stratifying e.g. "Male, Graduate", "Male, Undergraduate", "Female, Graduate", "Female, Undergraduate"
+            stratify_proportions (list of float): A list of numbers representing the desired propotions for stratifying e.g. 0.4, 0.4, 0.2, 0.2, The list values must add up to 1 and must match the number of values in stratify_values
+            random_state (int, optional): sets the random_state. Defaults to None.
+        Returns:
+            DataFrame: a new dataframe based on data that has the new proportions represnting the desired strategy for stratifying
+        Source: https://towardsdatascience.com/stratified-random-sampling-using-python-and-pandas-1c84f0362ebc"""
+        df_stratified = pd.DataFrame(columns = self.data.columns) # Create an empty DataFrame with column names matching df_data
 
-  def anova_2tailed(self,target,feature_names):
+        pos = -1
+        for i in range(len(stratify_values)): # iterate over the stratify values (e.g. "Male, Undergraduate" etc.)
+            pos += 1
+            if pos == len(stratify_values) - 1: 
+                ratio_len = len(self.data) - len(df_stratified) # if this is the final iteration make sure we calculate the number of values for the last set such that the return data has the same number of rows as the source data
+            else:
+                ratio_len = int(len(self.data) * stratify_proportions[i]) # Calculate the number of rows to match the desired proportion
 
-    print('Null hypothesis:\n The statistical mean of all the groups/categories of the variables is the same.\nAlternate Hypothesis:\n The statistical mean of all the groups/categories of the variables is not the same.')
+            df_filtered = self.data[self.data[stratify_column_name] ==stratify_values[i]] # Filter the source data based on the currently selected stratify value
+            df_temp = df_filtered.sample(replace=True, n=ratio_len, random_state=random_state) # Sample the filtered data using the calculated ratio
 
-    for x in feature_names:
-        model = ols(target + '~' + x, data = self.data).fit() #Oridnary least square method
-        result_anova = sm.stats.anova_lm(model) # ANOVA Test
-        print(result_anova)
+            df_stratified = pd.concat([df_stratified, df_temp]) # Add the sampled / stratified datasets together to produce the final result
+
+        return df_stratified # Return the stratified, re-sampled data   
 
 #-----------------------------------------------------------------------------
                         # MODEL - FIND_SEGMENT_SPLIT
@@ -362,3 +388,5 @@ class RiskDataframe():
               "\nModel Developed on Seg 2 (train sample) applied on Seg 2 (test sample):\n",
               "     ACCURACY: ",accuracy_score(y_test_seg2, y_pred_seg2))
         print("     GINI:{}".format(GINI(y_test_seg2, y_pred_seg2_proba)*100))
+
+

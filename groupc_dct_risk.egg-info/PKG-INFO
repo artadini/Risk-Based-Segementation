@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
 Name: groupc-dct-risk
-Version: 0.1
-Summary: Python Packaging Starting Kit - Simple Structure to create your own package - for training purposes!
-Home-page: https://github.com/artadini/groupc_dct_risk
+Version: 0.2
+Summary: Group C Class: Risk-Based-Segementation when a custom would default or not.
+Home-page: https://github.com/artadini/Risk-Based-Segementation
 Author: Group C
 Author-email: artadini@student.ie.edu
 License: MIT
